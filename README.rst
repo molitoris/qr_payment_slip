@@ -26,7 +26,7 @@ Samples
 Installation
 ============
 
-    $ pip install qr-paymentslip
+    $ pip install qr-payment-slip
 
 Usage example
 =============
@@ -37,23 +37,19 @@ Python
 
 .. code-block:: python
 
-    from qrbill.bill import QRBill, Address
+    from qr_payment_slip.bill import QRPaymentSplip, Address
 
-    bill = QRBill()
-    bill.account = "CH9889144356966475815"
-    bill.creditor = Address(name="Hans Muster", address_line_1="Musterstrasse 1", pcode=1000, town="Musterhausen")
+    payment_slip = QRPaymentSlip()
+    payment_slip.account = "CH9889144356966475815"
+    payment_slip.creditor = Address(name="Hans Muster", address_line_1="Musterstrasse", address_line_2=1", pcode=1000, town="Musterhausen")
 
-    bill.save("my_bill.svg")
+    payment_slip.save("my_bill.svg")
 
 
 Running tests
 =============
 
 You can run tests either by executing::
-
-    $ python tests/test_qrbill.py
-
-or::
 
     $ python setup.py test
 
