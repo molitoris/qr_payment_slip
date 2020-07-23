@@ -2,12 +2,13 @@ from decimal import Decimal
 
 import qrcode.image.svg
 from qrcode import QRCode
+
 from stdnum import iban, iso11649
 from stdnum.ch import esr
 
-from qrbill.address import Address
-from qrbill.errors import MissingAttributeError, ConversionError, ValidationError
-from qrbill.printer import SVGPrinter, Printer
+from qr_payment_slip.address import Address
+from qr_payment_slip.errors import MissingAttributeError, ConversionError, ValidationError
+from qr_payment_slip.printer import SVGPrinter, Printer
 
 IBAN_ALLOWED_COUNTRIES = ["CH", "LI"]
 QR_IID = {"start": 30000, "end": 31999}
@@ -15,43 +16,9 @@ AMOUNT_REGEX = r"^\d{1,9}\.\d{2}$"
 DATE_REGEX = r"(\d{4})-(\d{2})-(\d{2})"
 MM_TO_UU = 3.543307
 
-# Annex D: Multilingual headings
-LABELS = {
-    "Payment part": {"de": "Zahlteil", "fr": "Section paiement", "it": "Sezione pagamento"},
-    "Account / Payable to": {
-        "de": "Konto / Zahlbar an",
-        "fr": "Compte / Payable à",
-        "it": "Conto / Pagabile a",
-    },
-    "Reference": {"de": "Referenz", "fr": "Référence", "it": "Riferimento"},
-    "Additional information": {
-        "de": "Zusätzliche Informationen",
-        "fr": "Informations supplémentaires",
-        "it": "Informazioni supplementari",
-    },
-    "Currency": {"de": "Währung", "fr": "Monnaie", "it": "Valuta"},
-    "Amount": {"de": "Betrag", "fr": "Montant", "it": "Importo"},
-    "Receipt": {"de": "Empfangsschein", "fr": "Récépissé", "it": "Ricevuta"},
-    "Acceptance point": {"de": "Annahmestelle", "fr": "Point de dépôt", "it": "Punto di accettazione"},
-    "Separate before paying in": {
-        "de": "Vor der Einzahlung abzutrennen",
-        "fr": "A détacher avant le versement",
-        "it": "Da staccare prima del versamento",
-    },
-    "Payable by": {"de": "Zahlbar durch", "fr": "Payable par", "it": "Pagabile da"},
-    "Payable by (name/address)": {
-        "de": "Zahlbar durch (Name/Adresse)",
-        "fr": "Payable par (nom/adresse)",
-        "it": "Pagabile da (nome/indirizzo)",
-    },
-    # The extra ending space allows to differentiate from the other "Payable by" above.
-    "Payable by ": {"de": "Zahlbar bis", "fr": "Payable jusqu’au", "it": "Pagabile fino al"},
-    "In favour of": {"de": "Zugunsten", "fr": "En faveur de", "it": "A favore di"},
-}
 
-
-class QRBill:
-    """This class represents a Swiss QR Bill."""
+class QRPaymentSlip:
+    """This class represents a QR payment slip."""
     # Header
     qr_type = "SPC"  # Swiss Payments Code
     qr_version = "0200"  # Version of the specification
@@ -62,9 +29,8 @@ class QRBill:
     trailer = "EPD"  # End Payment Data
 
     def __init__(self, account=None, creditor=None, ultimate_creditor=None, amount=None, currency="CHF", debtor=None,
-                 ref_number=None, unstructured_message=None, billing_info=None, language="en", printer=SVGPrinter()):
+                 ref_number=None, unstructured_message=None, billing_info=None, printer=SVGPrinter()):
         """
-
         :param account: IBAN of the payment recipient (creditor)
         :param creditor: Address of the creditor (as instance of Address or as dict)
         :param ultimate_creditor: Reserved for future use
@@ -74,7 +40,6 @@ class QRBill:
         :param ref_number:
         :param unstructured_message: payment purpose or additional textual information
         :param billing_info: coded information for automated booking of the payment
-        :param language:
         :param printer: Class used to draw the bill: default SVGPrinter
         """
         # Creditor information
@@ -95,7 +60,6 @@ class QRBill:
         self.billing_info = billing_info
 
         # Internal
-        self.language = language
         self.printer = printer
 
     def __repr__(self):
@@ -291,16 +255,6 @@ class QRBill:
         self._billing_info = billing_info
 
     # Internal
-    @property
-    def language(self):
-        return self._language
-
-    @language.setter
-    def language(self, language):
-        if language not in ["en", "de", "fr", "it"]:
-            raise ValidationError("Language can only be 'en', 'de', 'fr', or 'it'")
-        self._language = language
-
     def recipient(self):
         """
         :return: list containing IBAN and creditor information
@@ -313,7 +267,6 @@ class QRBill:
         """
         :return: list containing unstructured message and billing information
         """
-
         return [self.unstructured_message, self.billing_info]
 
     def sender(self):
@@ -327,7 +280,8 @@ class QRBill:
         data = []
 
         def address_as_list(address):
-            if address:
+            if address is not None:
+                data.append(address.address_type)
                 data.append(address.name)
                 data.append(address.address_line_1)
                 data.append(address.address_line_2)
@@ -343,15 +297,13 @@ class QRBill:
         data.append(self.coding_type)
 
         # Creditor information
-        data.append(self.account)
+        data.append(self.account.replace(" ", ""))
 
         # Creditor
-        data.append(self.creditor.address_type)
         address_as_list(self.creditor)
 
         # Ultimate Creditor
-        data.append(self.ultimate_creditor.address_type if self.ultimate_creditor else None)
-        address_as_list(Address(country=""))
+        address_as_list(None)
 
         # Payment information
         data.append(self.amount)
@@ -368,6 +320,9 @@ class QRBill:
         data.append(self.unstructured_message)
         data.append(self.trailer)
         data.append(self.billing_info)
+
+        if len(data) != 32:
+            raise AttributeError("QR Code does not have the correct number of items.")
 
         # Alternative schemes
         # data.append(self.av1_param)
@@ -390,9 +345,6 @@ class QRBill:
         code = QRCode(image_factory=image_factory, **kwargs)
         code.add_data(data)
         return code
-
-    def label(self, txt):
-        return txt if self.language == "en" else LABELS[txt][self.language]
 
     def save(self, file_name, printer=None):
         """ Save bill under the given file name
@@ -421,3 +373,5 @@ class QRBill:
             return Address(**address)
 
         return ConversionError(f"Address can only be an instance {Address.__name__} or dict. Cannot convert {address}")
+
+

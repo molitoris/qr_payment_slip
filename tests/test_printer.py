@@ -5,8 +5,8 @@ import unittest
 import svgwrite
 from svgwrite import mm, percent, shapes
 
-from qrbill import SVGPrinter
-from qrbill.errors import ConversionError
+from qr_payment_slip import SVGPrinter
+from qr_payment_slip.errors import ConversionError
 
 
 class SVGPrinterTest(unittest.TestCase):

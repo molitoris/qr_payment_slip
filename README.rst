@@ -1,13 +1,12 @@
-.. image:: https://travis-ci.org/claudep/swiss-qr-bill.svg?branch=master
-    :target: https://travis-ci.org/claudep/swiss-qr-bill
-
-===============================
-Swiss QR payment slip generator
-===============================
+=========================
+QR payment slip generator
+=========================
 
 Purpose
 =======
-This library generates QR payment slips for Switzerland and Liechtenstein, which follow the `Swiss Payment Standards 2019 (Version 2.1) <https://www.paymentstandards.ch/>`_. The library outputs the payment slips as SVG graphics.
+This library generates QR payment slips for Switzerland and Liechtenstein, which follow the `Swiss Payment Standards 2019 (Version 2.1) <https://www.paymentstandards.ch/>`_.
+
+The library currently outputs the payment slips as SVG graphics.
 
 Samples
 -------
@@ -27,7 +26,7 @@ Samples
 Installation
 ============
 
-    $ pip install qrbill
+    $ pip install qr-paymentslip
 
 Usage example
 =============
@@ -45,26 +44,6 @@ Python
     bill.creditor = Address(name="Hans Muster", address_line_1="Musterstrasse 1", pcode=1000, town="Musterhausen")
 
     bill.save("my_bill.svg")
-
-Command line
-------------
-
-Minimal::
-
-    $ qrbill --account "CH4431999123000889012" --creditor-name "John Doe"
-      --creditor-postalcode 2501 --creditor-city "Biel"
-
-More complete::
-
-    $ qrbill --account "CH58 0079 1123 0008 8901 2" --creditor-name "Robert Schneider AG"
-    --creditor-street "Rue du Lac 1268" --creditor-postalcode "2501" --creditor-city "Biel"
-    --extra-infos "Bill No. 3139 for garden work and disposal of cuttings."
-    --debtor-name "Pia Rutschmann" --debtor-street "Marktgasse 28" --debtor-postalcode "9400"
-    --debtor-city "Rorschach" --due-date "2019-10-31" --language "de"
-
-For usage::
-
-    $ qrbill -h
 
 
 Running tests

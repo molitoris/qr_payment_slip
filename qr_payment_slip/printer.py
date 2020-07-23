@@ -1,11 +1,15 @@
 import abc
 import re
 
+import gettext
+
 import svgwrite
 from svgwrite import container, shapes, text, path, pattern
 from svgwrite import mm, pt, percent
 
-from qrbill.errors import ValidationError, ConversionError
+from qr_payment_slip.errors import ValidationError, ConversionError
+
+_ = gettext.gettext
 
 
 class Printer(abc.ABC):
@@ -26,7 +30,7 @@ class SVGPrinter(Printer):
         """Draw a QR bill as an SVG graphic
 
         :param bill:
-        :type bill: qrbill.bill.QRBill
+        :type bill: qrbill.bill.QRPaymentSlip
         :param fonts: fonts used for the title, header, text
         :type fonts: dict
         :param bill_height: total height of the bill
@@ -57,14 +61,14 @@ class SVGPrinter(Printer):
             self.fonts = fonts
 
         self.fonts = {
-            "title": {"font_size": 11, "font_family": "helvetica", "font_weight": "bold"},
+            "title": {"font_size": 11, "font_family": "Helvetica", "font_weight": "bold"},
             "payment": {
-                "header": {"font_size": 8, "font_family": "helvetica", "font_weight": "bold"},
-                "text": {"font_size": 10, "font_family": "helvetica"},
+                "header": {"font_size": 8, "font_family": "Helvetica", "font_weight": "bold"},
+                "text": {"font_size": 10, "font_family": "Helvetica"},
             },
             "receipt": {
-                "header": {"font_size": 6, "font_family": "helvetica", "font_weight": "bold"},
-                "text": {"font_size": 9, "font_family": "helvetica"},
+                "header": {"font_size": 6, "font_family": "Helvetica", "font_weight": "bold"},
+                "text": {"font_size": 9, "font_family": "Helvetica"},
             }
         }
 
@@ -93,7 +97,7 @@ class SVGPrinter(Printer):
         this function.
 
         :param file_name: File name under which the invoice should be saved
-        :param bill: QRBill instance (optional)
+        :param bill: QRPaymentSlip instance (optional)
         :return: None
         """
         if bill:
@@ -104,12 +108,12 @@ class SVGPrinter(Printer):
 
         bill_width = self.receipt_width + self.payment_width
 
-        dwg = svgwrite.Drawing(
+        dwg = svgwrite.Drawing(id="qr_paymentslip",
             size=(bill_width * mm, self.bill_height * mm),
             filename=file_name,
         )
 
-        dwg.add(dwg.rect(insert=(0, 0), size=(100 * percent, 100 * percent), fill="white"))
+        dwg.add(dwg.rect(id="background", insert=(0, 0), size=(100 * percent, 100 * percent), fill="white"))
 
         if self.as_sample:
             defs = container.Defs()
@@ -129,7 +133,7 @@ class SVGPrinter(Printer):
         dwg.add(receipt)
 
         # Vertical line between receipt and payment parts
-        dwg.add(shapes.Line(start=(self.receipt_width * mm, 0),
+        dwg.add(shapes.Line(id="separation_line", start=(self.receipt_width * mm, 0),
                             end=(self.receipt_width * mm, self.bill_height * mm),
                             stroke="black", stroke_dasharray="2 1 1 1"))
 
@@ -160,18 +164,18 @@ class SVGPrinter(Printer):
         receipt_part = container.SVG(insert=(x, y), size=(width, height), id="receipt_part")
 
         # title section
-        title = self._draw_title(self.bill.label("Receipt"), **self.fonts["title"])
+        title = self._draw_title(_("Receipt"), **self.fonts["title"])
         receipt_part.add(title)
 
         # Information section
         y = self.calculate_y(0, title)
-        header = self.bill.label("Account / Payable to")
+        header = _("Account / Payable to")
         recipient = self.bill.recipient()
         creditor = self._draw_paragraph(y, header, recipient, fonts)
         receipt_part.add(creditor)
 
         y = self.calculate_y(y, creditor)
-        header = self.bill.label("Reference")
+        header = _("Reference")
         lines = [self.bill.ref_number]
         reference = self._draw_paragraph(y, header, lines, fonts)
         receipt_part.add(reference)
@@ -179,23 +183,23 @@ class SVGPrinter(Printer):
         y = self.calculate_y(y, reference)
         lines = self.bill.sender()
         if not lines:
-            header = self.bill.label("Payable by (name/address)")
+            header = _("Payable by (name/address)")
         else:
-            header = self.bill.label("Payable by")
+            header = _("Payable by")
         debtor = self._draw_paragraph(y, header, lines, fonts, blank_field_if_empty=True, field_width=52 * mm,
                                       field_height=20 * mm)
         receipt_part.add(debtor)
 
         # Amount section
         y = self.y_amount_section
-        headers = [self.bill.label("Currency"), self.bill.label("Amount")]
+        headers = [_("Currency"), _("Amount")]
         lines = [self.bill.currency, self.bill.amount]
         amount_section = self._draw_amount(y, headers, lines, fonts, field_width=30 * mm, field_height=10 * mm)
         receipt_part.add(amount_section)
 
         # Acceptance point section
         receipt_part.add(
-            text.Text(self.bill.label("Acceptance point"),
+            text.Text(_("Acceptance point"),
                       insert=((self.receipt_width - 2 * self.margin) * mm, self.y_acceptance_point),
                       text_anchor="end", **self.fonts["receipt"]["header"]))
 
@@ -224,14 +228,14 @@ class SVGPrinter(Printer):
          """
         fonts = self.fonts["payment"]
 
-        payment_part = container.SVG(insert=(x, y), size=(width, height), id="payment_part")
+        payment_part = container.SVG(id="payment_part", insert=(x, y), size=(width, height))
         # payment_part.add(shapes.Rect(insert=(0, 0), size=("100%", "100%"), fill="white"))
 
         # Left column
-        left_part = container.SVG(insert=(0, 0), size=(56 * mm, 100 * percent))
+        left_part = container.SVG(id="left_column", insert=(0, 0), size=(56 * mm, 100 * percent))
 
         # title section
-        title = self._draw_title(self.bill.label("Payment part"), **self.fonts["title"])
+        title = self._draw_title(_("Payment part"), **self.fonts["title"])
         left_part.add(title)
 
         # qr code section
@@ -242,7 +246,7 @@ class SVGPrinter(Printer):
 
         # amount section
         y = self.y_amount_section
-        headers = [self.bill.label("Currency"), self.bill.label("Amount")]
+        headers = [_("Currency"), _("Amount")]
         lines = [self.bill.currency, self.bill.amount]
         amount_section = self._draw_amount(y, headers, lines, fonts, field_width=40 * mm, field_height=15 * mm)
         payment_part.add(amount_section)
@@ -253,19 +257,19 @@ class SVGPrinter(Printer):
         right_part = container.SVG(insert=(56 * mm, 0), size=(10 * mm, 100 * percent))
 
         y = 0
-        header = self.bill.label("Account / Payable to")
+        header = _("Account / Payable to")
         recipient = self.bill.recipient()
         creditor = self._draw_paragraph(y, header, recipient, fonts)
         right_part.add(creditor)
 
         y = self.calculate_y(y, creditor)
-        header = self.bill.label("Reference")
+        header = _("Reference")
         lines = [self.bill.ref_number]
         reference = self._draw_paragraph(y, header, lines, fonts)
         right_part.add(reference)
 
         y = self.calculate_y(y, reference)
-        header = self.bill.label("Additional information")
+        header = _("Additional information")
         additional_info = self.bill.additional_info()
         info = self._draw_paragraph(y, header, additional_info, fonts)
         right_part.add(info)
@@ -273,9 +277,9 @@ class SVGPrinter(Printer):
         y = self.calculate_y(y, info)
         lines = self.bill.sender()
         if not lines:
-            header = self.bill.label("Payable by (name/address)")
+            header = _("Payable by (name/address)")
         else:
-            header = self.bill.label("Payable by")
+            header = _("Payable by")
         debtor = self._draw_paragraph(y, header, lines, fonts, blank_field_if_empty=True, field_width=65 * mm,
                                       field_height=25 * mm)
         right_part.add(debtor)
@@ -389,7 +393,7 @@ class SVGPrinter(Printer):
         """
         content = container.SVG(insert=(0, y), size=("100%", 56 * mm))
 
-        content.add(path.Path(d=qr_code, style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none", ))
+        content.add(path.Path(id="qr_code", d=qr_code, style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"))
         content.add(SVGPrinter._draw_white_cross(position=(24.5 * mm, 24.5 * mm)))
 
         return content
@@ -474,3 +478,4 @@ class SVGPrinter(Printer):
             return float(match.group(1)) * 3.543307
 
         raise ConversionError(f"Could not convert '{value}' into pixel")
+

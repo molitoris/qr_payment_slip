@@ -1,11 +1,11 @@
 from iso3166 import countries
 
-from qrbill.errors import ValidationError
+from qr_payment_slip.errors import ValidationError
 
 
 class Address:
-    def __init__(self, name=None, address_line_1=None, address_line_2=None, pcode=None, town=None, country=None,
-                 is_structured_address=True):
+    def __init__(self, name=None, address_line_1=None, address_line_2=None, pcode=None, town=None,
+                 country="Switzerland", is_structured_address=True):
         """Store a postal address
 
         Address is either a

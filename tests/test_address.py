@@ -1,15 +1,15 @@
 import unittest
 
-from qrbill.address import Address
-from qrbill.errors import ValidationError
+from qr_payment_slip.address import Address
+from qr_payment_slip.errors import ValidationError
 
 
 class AddressInitializationTest(unittest.TestCase):
 
     def test_empty_address(self):
         address = Address()
-        self.assertEqual(repr(address), "<Address (name:None, address:None, None, None None, None)>")
-        self.assertEqual(str(address), "None, None, None, None None, None")
+        self.assertEqual(repr(address), "<Address (name:None, address:None, None, None None, CH)>")
+        self.assertEqual(str(address), "None, None, None, None None, CH")
 
     def test_full_address(self):
         name, street, pcode, town = "Hans Muster", "Musterstrasse 1", 1000, "Musterhausen"
@@ -99,7 +99,7 @@ class CombinedAddressTest(unittest.TestCase):
     def test_data_list(self):
         data_list = self.address.data_list()
 
-        self.assertListEqual(data_list, ["K", self.name, self.address_line_1, self.address_line_2, None, None, None])
+        self.assertListEqual(data_list, ["K", self.name, self.address_line_1, self.address_line_2, None, None, "CH"])
 
     def test_as_paragraph(self):
         paragraph = self.address.as_paragraph()

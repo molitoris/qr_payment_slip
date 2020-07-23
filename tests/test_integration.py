@@ -1,17 +1,16 @@
 import pathlib
 import unittest
 
-from qrbill import QRBill
-from qrbill.address import Address
+from qr_payment_slip import QRPaymentSlip
+from qr_payment_slip.address import Address
 
 
 class TestQRBillIntegration(unittest.TestCase):
 
     def test_bill_generation(self):
-        my_bill = QRBill(
+        my_bill = QRPaymentSlip(
             account="CH9889144356966475815",
             creditor=Address(name="Hans Muster", address_line_1="Musterstrasse 1", pcode=1000, town="Musterhausen"),
-            language="de"
         )
 
         # __file__
