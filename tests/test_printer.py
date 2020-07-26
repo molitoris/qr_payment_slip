@@ -30,16 +30,18 @@ class SVGPrinterTest(unittest.TestCase):
         file_path = pathlib.Path(self.temp_dir.name) / "cross.svg"
 
         dwg = svgwrite.Drawing(size=(height, height), filename=file_path)
-        cross = SVGPrinter._draw_white_cross(height=32 * mm, position=(0, 0))
+        cross = SVGPrinter._draw_white_cross()
 
-        self.assertEqual(len(cross.elements), 3)
+        self.assertEqual(len(cross.elements), 4)
 
-        polyline = cross.elements[2]
-        self.assertTrue(isinstance(polyline, shapes.Polyline))
-        self.assertEqual(len(polyline.points), 13)
+        self.assertEqual(cross.elements[1].tostring(),
+                         '<rect fill="black" height="100%" width="100%" x="0" y="0" />')
 
-        dwg.add(cross)
-        dwg.save()
+        self.assertEqual(cross.elements[2].tostring(),
+                         '<rect fill="white" height="18.75%" width="62.5%" x="18.75%" y="40.625%" />')
+
+        self.assertEqual(cross.elements[3].tostring(),
+                         '<rect fill="white" height="62.5%" width="18.75%" x="40.625%" y="18.75%" />')
 
     def test_convert_to_pixel(self):
         MM_CONST = 3.543307

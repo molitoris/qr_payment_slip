@@ -346,7 +346,7 @@ class QRPaymentSlip:
         code.add_data(data)
         return code
 
-    def save(self, file_name, printer=None):
+    def draw(self, *args, printer=None, **kwargs):
         """ Save bill under the given file name
 
         :param file_name: filename to save the bill
@@ -361,7 +361,11 @@ class QRPaymentSlip:
         if not self.creditor:
             raise MissingAttributeError("Creditor is mandatory")
 
-        self.printer.draw(file_name, self)
+        return self.printer.draw(*args, bill=self, **kwargs)
+
+    def save_as(self, *args, **kwargs):
+
+        self.printer.save_as(*args, bill=self, **kwargs)
 
     @staticmethod
     def _convert_address(address):

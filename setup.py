@@ -32,6 +32,7 @@ setup(
         "python-stdnum~=1.13",
         "iso3166~=1.0.1",
         "setuptools~=49.2.0"
+        "cairosvg~=2.4.2"
     ],
     keywords="QR payment slip bill swiss payment standard",
     classifiers=[

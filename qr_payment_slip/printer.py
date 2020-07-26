@@ -1,12 +1,20 @@
 import abc
-import re
-
+import datetime
 import gettext
+import re
+from pathlib import Path
+from typing import Tuple, Union, TYPE_CHECKING
 
 import svgwrite
 from svgwrite import container, shapes, text, path, pattern
 from svgwrite import mm, pt, percent
 
+# import cairosvg
+
+if TYPE_CHECKING:
+    from qr_payment_slip.bill import QRPaymentSlip
+
+from qr_payment_slip.enum import PaperSize, PaymentSlipPosition
 from qr_payment_slip.errors import ValidationError, ConversionError
 
 _ = gettext.gettext
@@ -18,15 +26,21 @@ class Printer(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def save_as(self, *args, **kwargs):
+        pass
+
+    @abc.abstractmethod
     def draw(self, *args, **kwargs):
         pass
 
 
 class SVGPrinter(Printer):
 
-    def __init__(self, bill=None, fonts=None,
+    def __init__(self, bill: "QRPaymentSlip" = None,
+                 fonts=None,
                  bill_height=105, receipt_width=62, payment_width=148, margin=5,
-                 y_amount_section=66 * mm, y_acceptance_section=82 * mm, as_sample=False):
+                 y_amount_section=66, y_acceptance_section=82,
+                 as_sample=False):
         """Draw a QR bill as an SVG graphic
 
         :param bill:
@@ -72,8 +86,8 @@ class SVGPrinter(Printer):
             }
         }
 
-        self.y_amount_section = y_amount_section
-        self.y_acceptance_point = y_acceptance_section
+        self.y_amount_section = y_amount_section * mm
+        self.y_acceptance_point = y_acceptance_section * mm
         self.as_sample = as_sample
 
     def __repr__(self):
@@ -84,10 +98,79 @@ class SVGPrinter(Printer):
         return self._bill
 
     @bill.setter
-    def bill(self, bill):
+    def bill(self, bill: "QRPaymentSlip"):
         self._bill = bill
 
-    def draw(self, file_name, bill=None):
+    def save_as(self, *args, destination_dir="build", **kwargs):
+        """
+
+        :param file_name: File name under which the invoice should be saved
+        :param destination_dir:
+        """
+
+        drawing = self.draw(*args, **kwargs)
+
+        receiver = self.bill.debtor
+
+        datetime_object = datetime.datetime.now()
+        timestamp = datetime_object.strftime("%y%m%d")
+
+        output_name = f"{timestamp}_{receiver.name.replace(' ', '_')}"
+        output_file = Path(destination_dir, output_name, output_name + ".svg")
+
+        # Generate output directory if it does not exist
+        output_dir = Path(destination_dir, output_name)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        drawing.saveas(filename=output_file)
+
+    def draw(self,
+             bill: "QRPaymentSlip" = None,
+             paper_size: Union[Tuple[float, float], PaperSize] = PaperSize.A4,
+             payment_slip_position: Union[Tuple[float, float], PaymentSlipPosition] = PaymentSlipPosition.BOTTOM):
+        """
+
+        :param bill: Bill which should be printed
+
+        :param paper_size: Size of the paper on which the payment slip is printed. Either a tuple with width and height
+        in mm or as an enum of PaperSize
+
+        :param payment_slip_position: Position where to payment slip should be position on the paper. Either a tuple
+        with the x and y position in mm or as an enum of PaymentSlipPosition
+
+        :return: SVG image
+        """
+
+        if bill:
+            self.bill = bill
+
+        if self.bill is None:
+            raise ValidationError("No bill provided!")
+
+        if isinstance(paper_size, PaperSize):
+            if paper_size is PaperSize.A4:
+                size = (210 * mm, 297 * mm)
+            elif paper_size is PaperSize.PAYMENT_SLIP:
+                size = (self.receipt_width + self.payment_width, self.bill_height)
+        else:
+            size = (SVGPrinter.convert_to_pixel(v) for v in paper_size)
+
+        if isinstance(payment_slip_position, PaymentSlipPosition):
+            if payment_slip_position is PaymentSlipPosition.BOTTOM:
+                insert = (0, 192 * mm)
+            elif payment_slip_position is PaymentSlipPosition.TOP:
+                insert = (0, 0)
+        else:
+            insert = (SVGPrinter.convert_to_pixel(v) for v in payment_slip_position)
+
+        drawing = self._draw(bill=bill, payment_slip_insert=insert)
+
+        dwg = svgwrite.Drawing(size=size)
+        dwg.add(drawing)
+
+        return dwg
+
+    def _draw(self, bill=None, payment_slip_insert=None):
         """ Create SVG image from the provided bill and saves it.
 
         The drawing of the bill is split into the receipt and payment part. The two parts are separated by a dotted
@@ -96,24 +179,19 @@ class SVGPrinter(Printer):
         NOTE: Bill can be provided with the creation of the printer, by setting the attribute manually or when calling
         this function.
 
-        :param file_name: File name under which the invoice should be saved
         :param bill: QRPaymentSlip instance (optional)
         :return: None
         """
-        if bill:
-            self.bill = bill
-
-        if not self.bill:
-            raise ValidationError("No bill provided!")
 
         bill_width = self.receipt_width + self.payment_width
 
-        dwg = svgwrite.Drawing(id="qr_paymentslip",
-            size=(bill_width * mm, self.bill_height * mm),
-            filename=file_name,
+        payment_slip_container = container.SVG(
+            id="qr_payment_slip",
+            insert=payment_slip_insert,
+            size=(bill_width * mm, self.bill_height * mm)
         )
 
-        dwg.add(dwg.rect(id="background", insert=(0, 0), size=(100 * percent, 100 * percent), fill="white"))
+        # dwg.add(dwg.rect(id="background", insert=(0, 0), size=(100 * percent, 100 * percent), fill="yellow"))
 
         if self.as_sample:
             defs = container.Defs()
@@ -122,46 +200,45 @@ class SVGPrinter(Printer):
 
             p.add(text.Text("Sample", font_size=40, text_anchor="middle", fill="#FFD3D3"))
             defs.add(p)
-            dwg.add(defs)
+            payment_slip_container.add(defs)
 
-            dwg.add(dwg.rect(insert=(0, 0), size=(100 * percent, 100 * percent), fill="url(#sample)"))
+            payment_slip_container.add(
+                shapes.Rect(insert=(0, 0), size=(100 * percent, 100 * percent), fill="url(#sample)"))
 
         # Receipt part
-        receipt = self._draw_recipient_part(x=self.margin * mm, y=self.margin * mm,
-                                            width=(self.receipt_width - 2 * self.margin) * mm,
-                                            height=(self.bill_height - 2 * self.margin) * mm)
-        dwg.add(receipt)
+        payment_slip_container.add(self._draw_recipient_part(
+            insert=(self.margin * mm, self.margin * mm),
+            size=((self.receipt_width - 2 * self.margin) * mm, (self.bill_height - 2 * self.margin) * mm))
+        )
 
         # Vertical line between receipt and payment parts
-        dwg.add(shapes.Line(id="separation_line", start=(self.receipt_width * mm, 0),
-                            end=(self.receipt_width * mm, self.bill_height * mm),
-                            stroke="black", stroke_dasharray="2 1 1 1"))
+        payment_slip_container.add(shapes.Line(id="separation_line", start=(self.receipt_width * mm, 0),
+                                               end=(self.receipt_width * mm, self.bill_height * mm),
+                                               stroke="black", stroke_dasharray="2 1 1 1"))
 
         # Payment part
-        payment = self._draw_payment_part(x=(self.receipt_width + self.margin) * mm, y=self.margin * mm,
-                                          width=(self.payment_width - 2 * self.margin) * mm,
-                                          height=(self.bill_height - 2 * self.margin) * mm)
-        dwg.add(payment)
+        payment_slip_container.add(self._draw_payment_part(
+            insert=((self.receipt_width + self.margin) * mm, self.margin * mm),
+            size=((self.payment_width - 2 * self.margin) * mm, (self.bill_height - 2 * self.margin) * mm))
+        )
 
-        dwg.save()
+        return payment_slip_container
 
-    def _draw_recipient_part(self, x, y, width, height):
+    def _draw_recipient_part(self, insert, size):
         """ Draw receipt part
 
         The receipt part consists of four sections. The title and information and acceptance point section are always
         printed. If there is no amount, a blank field is printed instead.
 
-        :param x: absolute x coordinate
-        :param y: absolute y coordinate
-        :param width: width of this part
-        :param height: height of this part
+        :param insert: absolute coordinate
+        :param size: size of this part
         :return payment part
         :rtype svgwrite.container.SVG
         """
 
         fonts = self.fonts["receipt"]
 
-        receipt_part = container.SVG(insert=(x, y), size=(width, height), id="receipt_part")
+        receipt_part = container.SVG(insert=insert, size=size, id="receipt_part")
 
         # title section
         title = self._draw_title(_("Receipt"), **self.fonts["title"])
@@ -205,7 +282,7 @@ class SVGPrinter(Printer):
 
         return receipt_part
 
-    def _draw_payment_part(self, x, y, width, height):
+    def _draw_payment_part(self, insert, size):
         """ Draw payment part
 
          Payment part consists is divided into two columns and consists of five sections. The left column contains the
@@ -219,17 +296,15 @@ class SVGPrinter(Printer):
          TODO: Move blank field below title instead of to the right
          TODO: Implement further information section
 
-         :param x: absolute x coordinate
-         :param y: absolute y coordinate
-         :param width: width of this part
-         :param height: height of this part
+         :param insert: absolute coordinate
+         :param size: size of this part
          :return payment part
          :rtype svgwrite.container.SVG
          """
         fonts = self.fonts["payment"]
 
-        payment_part = container.SVG(id="payment_part", insert=(x, y), size=(width, height))
-        # payment_part.add(shapes.Rect(insert=(0, 0), size=("100%", "100%"), fill="white"))
+        payment_part = container.SVG(id="payment_part", insert=insert, size=size)
+        # payment_part.add(shapes.Rect(insert=(0, 0), size=("100%", "100%"), fill="blue"))
 
         # Left column
         left_part = container.SVG(id="left_column", insert=(0, 0), size=(56 * mm, 100 * percent))
@@ -254,7 +329,8 @@ class SVGPrinter(Printer):
         payment_part.add(left_part)
 
         # Right column
-        right_part = container.SVG(insert=(56 * mm, 0), size=(10 * mm, 100 * percent))
+        right_part = container.SVG(insert=(56 * mm, 0), size=(82 * mm, 100 * percent))
+        # right_part.add(shapes.Rect(size=(100*percent, 100*percent), fill="green"))
 
         y = 0
         header = _("Account / Payable to")
@@ -358,7 +434,6 @@ class SVGPrinter(Printer):
 
     @staticmethod
     def _draw_line(text, dy, **extras):
-
         return text.Text(text=text, x=[0], dy=dy, **extras)
 
     @staticmethod
@@ -393,42 +468,38 @@ class SVGPrinter(Printer):
         """
         content = container.SVG(insert=(0, y), size=("100%", 56 * mm))
 
-        content.add(path.Path(id="qr_code", d=qr_code, style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"))
-        content.add(SVGPrinter._draw_white_cross(position=(24.5 * mm, 24.5 * mm)))
+        content.add(
+            path.Path(id="qr_code", d=qr_code, style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"))
+        content.add(SVGPrinter._draw_white_cross(insert=(24.5 * mm, 24.5 * mm)))
 
         return content
 
     @staticmethod
-    def _draw_white_cross(height=7 * mm, position=(19.5 * mm, 19.5 * mm)):
+    def _draw_white_cross(insert=(19.5 * mm, 19.5 * mm), size=(7 * mm, 7 * mm)):
         """Draw a white cross on a black square
 
         According to the 2017 flag law (SR 232.21) the cross is fixed at 5:8 of the height of the flag and the arms of
         the cross are one-sixth longer than they are wide.
 
-        :param height: Height of the flag
-        :param position: Position of the flag
+        :param size: Size of the flag
+        :param insert: Position of the flag
         :return:
         """
-        flag_width_px = SVGPrinter.convert_to_pixel(height)
+        content = container.SVG(insert=insert, size=size)
 
-        content = container.SVG(insert=position, size=(flag_width_px, flag_width_px))
-        content.add(shapes.Rect(size=(100 * percent, 100 * percent), fill="black"))
+        content.add(shapes.Rect(size=(100*percent, 100*percent), fill="black"))
 
-        margin = flag_width_px * 3 / 16
-        cross_arm_length = flag_width_px * 7 / 32
-        cross_arm_width = flag_width_px * 3 / 16
+        # a = 0.18750 * SVGPrinter.convert_to_pixel(size[0])  # 6/32
+        # b = 0.40625 * SVGPrinter.convert_to_pixel(size[0])  # 13/32
+        # c = 0.62500 * SVGPrinter.convert_to_pixel(size[0])  # 20/32
 
-        a = margin + cross_arm_length
-        b = margin + cross_arm_length + cross_arm_width
-        c = margin + cross_arm_length * 2 + cross_arm_width
+        a = 18.750 * percent  # 6/32
+        b = 40.625 * percent  # 13/32
+        c = 62.500 * percent  # 20/32
 
-        swiss_cross = shapes.Polyline(points=[
-            (a, margin), (b, margin), (b, a), (c, a),
-            (c, b), (b, b), (b, c), (a, c),
-            (a, b), (margin, b), (margin, a), (a, a), (a, margin)
-        ], fill="white")
-
-        content.add(swiss_cross)
+        # Build cross from two rectangles
+        content.add(shapes.Rect(insert=(a, b), size=(c, a), fill="white"))
+        content.add(shapes.Rect(insert=(b, a), size=(a, c), fill="white"))
 
         return content
 
@@ -479,3 +550,15 @@ class SVGPrinter(Printer):
 
         raise ConversionError(f"Could not convert '{value}' into pixel")
 
+
+class PDFPrinter(Printer):
+
+    def __init__(self, *args, **kwargs):
+        self.help_printer = SVGPrinter(*args, **kwargs)
+
+    def save_as(self, file_name, *args, **kwargs):
+        drawing = self.help_printer.draw(*args, **kwargs)
+        cairosvg.svg2pdf(drawing.tostring().encode(), write_to=file_name)
+
+    def draw(self, *args, **kwargs):
+        raise NotImplementedError
