@@ -101,28 +101,13 @@ class SVGPrinter(Printer):
     def bill(self, bill: "QRPaymentSlip"):
         self._bill = bill
 
-    def save_as(self, *args, destination_dir="build", **kwargs):
+    def save_as(self, file_name, *args, **kwargs):
         """
 
         :param file_name: File name under which the invoice should be saved
-        :param destination_dir:
         """
-
         drawing = self.draw(*args, **kwargs)
-
-        receiver = self.bill.debtor
-
-        datetime_object = datetime.datetime.now()
-        timestamp = datetime_object.strftime("%y%m%d")
-
-        output_name = f"{timestamp}_{receiver.name.replace(' ', '_')}"
-        output_file = Path(destination_dir, output_name, output_name + ".svg")
-
-        # Generate output directory if it does not exist
-        output_dir = Path(destination_dir, output_name)
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        drawing.saveas(filename=output_file)
+        drawing.saveas(filename=file_name)
 
     def draw(self,
              bill: "QRPaymentSlip" = None,
@@ -163,14 +148,15 @@ class SVGPrinter(Printer):
         else:
             insert = (SVGPrinter.convert_to_pixel(v) for v in payment_slip_position)
 
-        drawing = self._draw(bill=bill, payment_slip_insert=insert)
+        drawing = self._draw(payment_slip_insert=insert)
 
         dwg = svgwrite.Drawing(size=size)
+        dwg.add(shapes.Rect(size=(100 *percent, 100*percent), fill="white"))
         dwg.add(drawing)
 
         return dwg
 
-    def _draw(self, bill=None, payment_slip_insert=None):
+    def _draw(self, payment_slip_insert=None):
         """ Create SVG image from the provided bill and saves it.
 
         The drawing of the bill is split into the receipt and payment part. The two parts are separated by a dotted
@@ -376,9 +362,8 @@ class SVGPrinter(Printer):
         :param extras: passed to text
         :return:
         """
-
         content = container.SVG(insert=(0, 0), size=(100 * percent, font_size * line_space))
-        content.add(text.Text(title, dx=[0], dy=[font_size], **extras))
+        content.add(text.Text(title, dx=[0], dy=[font_size+1], **extras))
 
         return content
 
@@ -551,14 +536,14 @@ class SVGPrinter(Printer):
         raise ConversionError(f"Could not convert '{value}' into pixel")
 
 
-class PDFPrinter(Printer):
-
-    def __init__(self, *args, **kwargs):
-        self.help_printer = SVGPrinter(*args, **kwargs)
-
-    def save_as(self, file_name, *args, **kwargs):
-        drawing = self.help_printer.draw(*args, **kwargs)
-        cairosvg.svg2pdf(drawing.tostring().encode(), write_to=file_name)
-
-    def draw(self, *args, **kwargs):
-        raise NotImplementedError
+# class PDFPrinter(Printer):
+#
+#     def __init__(self, *args, **kwargs):
+#         self.help_printer = SVGPrinter(*args, **kwargs)
+#
+#     def save_as(self, file_name, *args, **kwargs):
+#         drawing = self.help_printer.draw(*args, **kwargs)
+#         cairosvg.svg2pdf(drawing.tostring().encode(), write_to=file_name)
+#
+#     def draw(self, *args, **kwargs):
+#         raise NotImplementedError
