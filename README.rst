@@ -30,21 +30,28 @@ Installation
 
 Usage example
 =============
-The library can be used as an instance or via the command line:
-
-Python
-------
 
 .. code-block:: python
 
-    from qr_payment_slip.bill import QRPaymentSplip, Address
+    from qr_payment_slip.bill import QRPaymentSlip, Address
 
     payment_slip = QRPaymentSlip()
+
+    # Set IBAN number (mandatory)
     payment_slip.account = "CH9889144356966475815"
-    payment_slip.creditor = Address(name="Hans Muster", address_line_1="Musterstrasse", address_line_2=1", pcode=1000, town="Musterhausen")
 
-    payment_slip.save("my_bill.svg")
+    # Set address of creditor (mandatory)
+    payment_slip.creditor = Address(name="Hans Muster", address_line_1="Musterstrasse", address_line_2="1", pcode=1000, town="Musterhausen")
 
+    # Set amount (optional)
+    payment_slip.amount = 100
+
+    # Set address of debtor (optional)
+    payment_slip.debtor = Address(name="Marie de Brisay", address_line_1="Dreibündenstrasse 34", pcode=7260,
+                                  town="Davos Dorf")
+
+    # Generate and save qr payment slip
+    payment_slip.save_as("my_bill.svg")
 
 Running tests
 =============

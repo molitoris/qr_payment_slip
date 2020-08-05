@@ -1,15 +1,11 @@
 import abc
-import datetime
 import gettext
 import re
-from pathlib import Path
 from typing import Tuple, Union, TYPE_CHECKING
 
 import svgwrite
 from svgwrite import container, shapes, text, path, pattern
 from svgwrite import mm, pt, percent
-
-# import cairosvg
 
 if TYPE_CHECKING:
     from qr_payment_slip.bill import QRPaymentSlip
@@ -35,14 +31,17 @@ class Printer(abc.ABC):
 
 
 class SVGPrinter(Printer):
+    """Create a svg image of a payment slip based on the information stored in a QrPaymentSlip
+
+    NOTE: All position and size variables have units in mm
+    """
 
     def __init__(self, bill: "QRPaymentSlip" = None,
                  fonts=None,
                  bill_height=105, receipt_width=62, payment_width=148, margin=5,
                  y_amount_section=66, y_acceptance_section=82,
                  as_sample=False):
-        """Draw a QR bill as an SVG graphic
-
+        """
         :param bill:
         :type bill: qrbill.bill.QRPaymentSlip
         :param fonts: fonts used for the title, header, text
@@ -101,8 +100,13 @@ class SVGPrinter(Printer):
     def bill(self, bill: "QRPaymentSlip"):
         self._bill = bill
 
+    @property
+    def total_width(self):
+        """Total width of the payment slip"""
+        return self.receipt_width + self.payment_width
+
     def save_as(self, file_name, *args, **kwargs):
-        """
+        """Save SVG image after drawing it directly to file
 
         :param file_name: File name under which the invoice should be saved
         """
@@ -113,13 +117,11 @@ class SVGPrinter(Printer):
              bill: "QRPaymentSlip" = None,
              paper_size: Union[Tuple[float, float], PaperSize] = PaperSize.A4,
              payment_slip_position: Union[Tuple[float, float], PaymentSlipPosition] = PaymentSlipPosition.BOTTOM):
-        """
+        """Draw svg image
 
         :param bill: Bill which should be printed
-
         :param paper_size: Size of the paper on which the payment slip is printed. Either a tuple with width and height
         in mm or as an enum of PaperSize
-
         :param payment_slip_position: Position where to payment slip should be position on the paper. Either a tuple
         with the x and y position in mm or as an enum of PaymentSlipPosition
 
@@ -148,16 +150,16 @@ class SVGPrinter(Printer):
         else:
             insert = (SVGPrinter.convert_to_pixel(v) for v in payment_slip_position)
 
-        drawing = self._draw(payment_slip_insert=insert)
-
         dwg = svgwrite.Drawing(size=size)
-        dwg.add(shapes.Rect(size=(100 *percent, 100*percent), fill="white"))
+        dwg.add(shapes.Rect(size=(100 * percent, 100 * percent), fill="white"))
+
+        drawing = self._draw(payment_slip_insert=insert)
         dwg.add(drawing)
 
         return dwg
 
     def _draw(self, payment_slip_insert=None):
-        """ Create SVG image from the provided bill and saves it.
+        """ Internal draw method
 
         The drawing of the bill is split into the receipt and payment part. The two parts are separated by a dotted
         line.
@@ -165,16 +167,14 @@ class SVGPrinter(Printer):
         NOTE: Bill can be provided with the creation of the printer, by setting the attribute manually or when calling
         this function.
 
-        :param bill: QRPaymentSlip instance (optional)
+        :param payment_slip_insert: Insert position of the payment slip
         :return: None
         """
-
-        bill_width = self.receipt_width + self.payment_width
 
         payment_slip_container = container.SVG(
             id="qr_payment_slip",
             insert=payment_slip_insert,
-            size=(bill_width * mm, self.bill_height * mm)
+            size=(self.total_width * mm, self.bill_height * mm)
         )
 
         # dwg.add(dwg.rect(id="background", insert=(0, 0), size=(100 * percent, 100 * percent), fill="yellow"))
@@ -197,10 +197,14 @@ class SVGPrinter(Printer):
             size=((self.receipt_width - 2 * self.margin) * mm, (self.bill_height - 2 * self.margin) * mm))
         )
 
-        # Vertical line between receipt and payment parts
+        # Horizontal separation line above payment slip
+        payment_slip_container.add(shapes.Line(start=(0, 0), end=(self.total_width * mm, 0),
+                                               stroke="black", stroke_dasharray="3 3"))
+
+        # Vertical separation line between receipt and payment parts
         payment_slip_container.add(shapes.Line(id="separation_line", start=(self.receipt_width * mm, 0),
                                                end=(self.receipt_width * mm, self.bill_height * mm),
-                                               stroke="black", stroke_dasharray="2 1 1 1"))
+                                               stroke="black", stroke_dasharray="3 3"))
 
         # Payment part
         payment_slip_container.add(self._draw_payment_part(

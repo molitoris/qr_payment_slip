@@ -17,7 +17,7 @@ class TestQRBillIntegration(unittest.TestCase):
 
         local_dir = pathlib.Path(__file__).parent
 
-        my_bill.printer.as_sample = True
+        # my_bill.printer.as_sample = True
 
         my_bill.save_as(local_dir / "../sample/01_bill_minimal.svg")
 
