@@ -2,6 +2,9 @@
 QR payment slip generator
 =========================
 
+.. image:: https://travis-ci.com/molitoris/qr_payment_slip.svg?branch=master
+    :target: https://travis-ci.com/molitoris/qr_payment_slip
+
 Purpose
 =======
 This library generates QR payment slips for Switzerland and Liechtenstein, which follow the `Swiss Payment Standards 2019 (Version 2.1) <https://www.paymentstandards.ch/>`_.
@@ -41,7 +44,8 @@ Usage example
     payment_slip.account = "CH9889144356966475815"
 
     # Set address of creditor (mandatory)
-    payment_slip.creditor = Address(name="Hans Muster", address_line_1="Musterstrasse", address_line_2="1", pcode=1000, town="Musterhausen")
+    payment_slip.creditor = Address(name="Hans Muster", address_line_1="Musterstrasse", address_line_2="1",
+                                    pcode=1000, town="Musterhausen")
 
     # Set amount (optional)
     payment_slip.amount = 100
