@@ -1,12 +1,16 @@
 language: python
-
 python:
-  - "3.6"
-  - "3.7"
-  - "3.8"
-
+- '3.6'
+- '3.7'
+- '3.8'
 install:
-  - pip install flake8
-
+- pip install flake8
+- pip inarall setuptools==49.2.0
 script:
-  - python setup.py test
+- python setup.py test
+deploy:
+  provider: pypi
+  username: __token__
+    secure: oaHlv0VVpvLWdo80TMcA7KqweaQPVJvc3J70c8pxecAHTQPy2tZ6XHkP8bvnnzzOPp3kr+B+cM+oXk2sKBIXr1raOPkU6eAJyDGkKxFft8bitxYonAOGk7aEV2mLbNEKiWnV4KAl1O69bwRRtjzgPLONjILPMkmOtXRDQ3ufdDK9eJKByp24NYAwZoCc084wZzv1X5zXE4zh23rR0VVvDlPvxSemyZqr0hHBc0iq/f1qipE/ZXcNOQ4q2XPFF4RtlV2FzaVepZekKhG9e2BycZrql7PmgoAyYtfmbCrA1hQ2dws8d/Q9Kshaf9mswR4tuwjRv6sAt1r6JWn8WWY54xzIaomTEtiURbzj8yc11hgwvSeJqXpgcW/mgCjpUj6VIei3iazaGV6I9KwSsfxZ+2r5G/JDHRzEqmZb7oASTBiCwGGFWrDxqN2mr+2noNOXWa9JuJY5Sd2q17bDa4VgVBrmyLcxzxDZrLitthDevR0vuB8eMvd+W4O9IjOeI7bi/1GlEalEli5skV8Epe1z25CErJnIJZ8PNZwEb8cZMUehren660yINO1uN28yUbWy4bUTxrstsgMWjD/ft0Ks2JNEy5aowTgmEmrc5d0f6R8Ii52aUr5kUqcANtKccxX4IblAFd2J7Kx+YzF4gpHZ8jJic/x7EyBE5OFnRI2wqEU=
+  on:
+    tags: true
