@@ -1,10 +1,6 @@
 .. image:: https://travis-ci.com/molitoris/qr_payment_slip.svg?branch=master
     :target: https://travis-ci.com/molitoris/qr_payment_slip
 
-.. raw:: html
-
-    <img src="https://imgur.com/fcY41wl" align="right">
-
 ===============
 QR payment slip
 ===============

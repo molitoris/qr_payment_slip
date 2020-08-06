@@ -24,7 +24,7 @@ setup(
     author_email="rafa.molitoris@gmail.com",
     description="QR payment slip generator for Switzerland and Lichtenstein",
     long_description=LONG_DESCRIPTION,
-    long_description_context_type="text/x-rst",
+    long_description_content_type="text/x-rst",
     packages=find_packages(),
     install_requires=[
         "svgwrite~=1.4",
