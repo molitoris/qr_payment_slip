@@ -1,38 +1,39 @@
-=========================
-QR payment slip generator
-=========================
-
 .. image:: https://travis-ci.com/molitoris/qr_payment_slip.svg?branch=master
     :target: https://travis-ci.com/molitoris/qr_payment_slip
 
-Purpose
-=======
-This library generates QR payment slips for Switzerland and Liechtenstein, which follow the `Swiss Payment Standards 2019 (Version 2.1) <https://www.paymentstandards.ch/>`_.
+.. raw:: html
 
-The library currently outputs the payment slips as SVG graphics.
+    <img src="https://i.imgur.com/NKkHhAY.png" align="right">
+
+===============
+QR payment slip
+===============
+QR payment slip generates payment slips for Switzerland and Lichtenstein according to the 'Swiss Payment Standards 2019 (Version 2.1) <https://www.paymentstandards.ch/>'.
+
+Features
+--------
+
+- Generates QR payment slip according to Swiss Payment Standard 2019 (Version 2.1)
+- Supported output formats
+   - SVG
+- Supported paper formats
+   - A4 containing payment slip (210mm x 297mm)
+   - Payment slip only (210mm x 105mm)
+- Validates IBAN number & QR reference
+- Missing information is replaced by boxes (see samples)
 
 Samples
 -------
+A selection of payment slips is stored in the `./samples` folder.
 
-* `Minimal`_
-* `Minimal with amount`_
-* `Minimal with amount and debtor`_
-* `Minimal with amount, debtor and reference number`_
-* `Minimal with amount, debtor, reference number and unstructured message`_
+Getting Started
+---------------
+QR payment slip can be installed directly from the Python package index using the `pip` command:
 
-.. _Minimal: ./sample/01_bill_minimal.svg
-.. _Minimal with amount: ./sample/02_bill_amount.svg
-.. _Minimal with amount and debtor: ./sample/03_bill_amount_debtor.svg
-.. _Minimal with amount, debtor and reference number: ./sample/04_bill_amount_debtor_ref.svg
-.. _Minimal with amount, debtor, reference number and unstructured message: ./sample/05_bill_amount_debtor_ref_msg.svg
+	$ pip install qr-payment-slip
 
-Installation
-============
-
-    $ pip install qr-payment-slip
-
-Usage example
-=============
+The following example shows how to create a QR payment slip. First an instance of QRPaymentSlip is created and then the
+IBAN number, the creditor, the amount and then the debtor is defined. Finally the QR invoice is generated and saved.
 
 .. code-block:: python
 
@@ -41,7 +42,7 @@ Usage example
     payment_slip = QRPaymentSlip()
 
     # Set IBAN number (mandatory)
-    payment_slip.account = "CH9889144356966475815"
+    payment_slip.account = "CH98 8914 4356 9664 7581 5"
 
     # Set address of creditor (mandatory)
     payment_slip.creditor = Address(name="Hans Muster", address_line_1="Musterstrasse", address_line_2="1",
@@ -56,11 +57,4 @@ Usage example
 
     # Generate and save qr payment slip
     payment_slip.save_as("my_bill.svg")
-
-Running tests
-=============
-
-You can run tests either by executing::
-
-    $ python setup.py test
 
