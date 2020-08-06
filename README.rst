@@ -3,7 +3,7 @@
 
 .. raw:: html
 
-    <img src="https://i.imgur.com/NKkHhAY.png" align="right">
+    <img src="https://imgur.com/fcY41wl" align="right">
 
 ===============
 QR payment slip
