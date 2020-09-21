@@ -1,6 +1,8 @@
 import abc
 import gettext
+import os
 import re
+from pathlib import Path
 from typing import Tuple, Union, TYPE_CHECKING
 
 import svgwrite
@@ -13,7 +15,22 @@ if TYPE_CHECKING:
 from qr_payment_slip.enum import PaperSize, PaymentSlipPosition
 from qr_payment_slip.errors import ValidationError, ConversionError
 
-_ = gettext.gettext
+
+lang = os.environ.get("output_language", "de_CH")
+available_lang = ["de_CH", "en_CH", "fr_CH", "it_CH"]
+
+index = 0
+for i, name in enumerate(available_lang):
+    if lang == name:
+        index = i
+        break
+
+lang_path = Path(__file__).parent.joinpath("locale")
+
+de = gettext.translation("messages", localedir=lang_path, languages=[available_lang[index]])
+de.install()
+
+_ = de.gettext
 
 
 class Printer(abc.ABC):

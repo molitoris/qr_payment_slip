@@ -15,7 +15,7 @@ with io.open(os.path.join(module_path, "./README.rst"), "rt", encoding="utf8") a
     LONG_DESCRIPTION = f.read()
 
 setup(
-    name="QR payment slip",
+    name="QR Payment Slip",
     version=version,
     project_urls={
         "Source Code": "https://github.com/molitoris/qr_payment_slip"
